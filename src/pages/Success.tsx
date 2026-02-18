@@ -47,22 +47,8 @@ const Success = () => {
               <Info className="w-4 h-4" />
               <h3 className="font-medium">Momsinformation</h3>
             </div>
-            <div className="text-sm space-y-2 text-blue-600 dark:text-blue-400">
-              <div className="flex items-center justify-between">
-                <span>Böcker (momssats):</span>
-                <span className="font-medium">6%</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span>Frakt inom Sverige/EU:</span>
-                <span className="font-medium">25% moms</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span>Frakt utanför EU:</span>
-                <span className="font-medium">Momsfri export (0%)</span>
-              </div>
-              <div className="text-xs text-blue-500 dark:text-blue-500 mt-3 pt-2 border-t border-blue-200 dark:border-blue-700">
-                Fullständig momsspecifikation och kvitto finns i din e-postbekräftelse
-              </div>
+            <div className="text-sm text-blue-600 dark:text-blue-400">
+              <p>Fullständig momsspecifikation och kvitto finns i din orderbekräftelse via e-post.</p>
             </div>
           </div>
           

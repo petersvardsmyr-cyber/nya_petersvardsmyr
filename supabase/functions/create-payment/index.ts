@@ -13,6 +13,7 @@ interface OrderRequest {
     title: string;
     price: number;
     quantity: number;
+    category: string;
   }>;
   shipping: {
     option_id: string;
@@ -71,12 +72,13 @@ serve(async (req) => {
 
     // Create line items for Stripe (including VAT)
     const lineItems = orderData.items.map(item => {
-      const priceIncVAT = Math.round(item.price * 1.06 * 100); // 6% VAT on books
+      const vatRate = item.category === 'book' ? 0.06 : 0.25;
+      const priceIncVAT = Math.round(item.price * (1 + vatRate) * 100); // Dynamisk momssats per produkt
       return {
         price_data: {
           currency: "sek",
           product_data: {
-            name: `${item.title} (inkl. 6% moms)`,
+            name: `${item.title} (inkl. ${Math.round(vatRate * 100)}% moms)`,
           },
           unit_amount: priceIncVAT,
         },

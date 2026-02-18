@@ -61,14 +61,13 @@ interface ShippingOption {
   id: 'sweden' | 'europe' | 'world';
   name: string;
   price: number;
-  vatRate: number;
   region: 'sweden' | 'eu' | 'non-eu';
 }
 
 const SHIPPING_OPTIONS: ShippingOption[] = [
-  { id: 'sweden', name: 'Inom Sverige', price: 39, vatRate: 0.25, region: 'sweden' },
-  { id: 'europe', name: 'Europa (utanför Sverige)', price: 100, vatRate: 0.25, region: 'eu' },
-  { id: 'world', name: 'Utanför Europa', price: 100, vatRate: 0, region: 'non-eu' }
+  { id: 'sweden', name: 'Inom Sverige', price: 39, region: 'sweden' },
+  { id: 'europe', name: 'Europa (utanför Sverige)', price: 100, region: 'eu' },
+  { id: 'world', name: 'Utanför Europa', price: 100, region: 'non-eu' }
 ];
 
 const BOOK_VAT_RATE = 0.06;
@@ -239,27 +238,88 @@ const Shop = () => {
     }
   };
 
+  // Bestäm fraktens momssats baserat på varukorgens innehåll
+  const determineShippingVatRate = (): number => {
+    // Utanför EU = momsfri export
+    if (selectedShipping.region === 'non-eu') return 0;
+
+    let bookQuantity = 0;
+    let merchQuantity = 0;
+
+    cart.forEach(item => {
+      if (item.category === 'book') {
+        bookQuantity += item.quantity;
+      } else {
+        merchQuantity += item.quantity;
+      }
+    });
+
+    // Bara böcker → 6%
+    if (merchQuantity === 0) return 0.06;
+    // Bara merch → 25%
+    if (bookQuantity === 0) return 0.25;
+    // Mix → momssats för kategorin med flest artiklar (lika = 6%, förmånligare)
+    return bookQuantity >= merchQuantity ? 0.06 : 0.25;
+  };
+
   const calculateVATBreakdown = () => {
-    // Calculate products (ex VAT prices)
-    const productsExVAT = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-    const productsVAT = Math.round(cart.reduce((vat, item) => vat + (item.price * getVatRate(item) * item.quantity), 0));
-    const productsIncVAT = productsExVAT + productsVAT;
-    
-    // Apply discount to products
+    // Steg 1: Beräkna inkl. moms per produkt, sedan räkna ut moms baklänges
+    let vat6ExVAT = 0;
+    let vat6VAT = 0;
+    let vat6IncVAT = 0;
+    let vat25ExVAT = 0;
+    let vat25VAT = 0;
+    let vat25IncVAT = 0;
+
+    cart.forEach(item => {
+      const vatRate = getVatRate(item);
+      // Kundens pris inkl moms per styck (avrundad till helkrona)
+      const unitIncVAT = Math.round(item.price * (1 + vatRate));
+      const itemIncVAT = unitIncVAT * item.quantity;
+      // Räkna ut moms baklänges från inkl-moms-beloppet
+      const itemExVAT = Math.round(itemIncVAT / (1 + vatRate));
+      const itemVAT = itemIncVAT - itemExVAT;
+
+      if (vatRate === 0.06) {
+        vat6ExVAT += itemExVAT;
+        vat6VAT += itemVAT;
+        vat6IncVAT += itemIncVAT;
+      } else {
+        vat25ExVAT += itemExVAT;
+        vat25VAT += itemVAT;
+        vat25IncVAT += itemIncVAT;
+      }
+    });
+
+    const productsExVAT = vat6ExVAT + vat25ExVAT;
+    const productsVAT = vat6VAT + vat25VAT;
+    const productsIncVAT = vat6IncVAT + vat25IncVAT;
+
+    // Tillämpa rabatt proportionellt på inkl-moms-belopp
     const discountAmountSEK = Math.round(productsIncVAT * (discountAmount / 100));
     const finalProductsIncVAT = productsIncVAT - discountAmountSEK;
-    const finalProductsExVAT = Math.round(productsExVAT - Math.round((productsExVAT / productsIncVAT) * discountAmountSEK));
+    const finalProductsExVAT = productsIncVAT > 0
+      ? Math.round(productsExVAT - Math.round((productsExVAT / productsIncVAT) * discountAmountSEK))
+      : 0;
     const finalProductsVAT = finalProductsIncVAT - finalProductsExVAT;
-    
-    // Calculate shipping (prices are inclusive of VAT)
+
+    // Beräkna frakt med dynamisk momssats
+    const shippingVatRate = determineShippingVatRate();
     const shippingIncVAT = selectedShipping.price;
-    const shippingExVAT = Math.round(shippingIncVAT / (1 + selectedShipping.vatRate));
+    const shippingExVAT = shippingVatRate > 0
+      ? Math.round(shippingIncVAT / (1 + shippingVatRate))
+      : shippingIncVAT;
     const shippingVAT = shippingIncVAT - shippingExVAT;
-    
+
+    // Summera totaler
     const totalExVAT = finalProductsExVAT + shippingExVAT;
     const totalVAT = finalProductsVAT + shippingVAT;
-    const totalIncVAT = totalExVAT + totalVAT;
-    
+    const rawTotalIncVAT = totalExVAT + totalVAT;
+
+    // Öresutjämning: avrunda till närmaste helkrona
+    const roundedTotalIncVAT = Math.round(rawTotalIncVAT);
+    const oresutjamning = roundedTotalIncVAT - rawTotalIncVAT;
+
     return {
       products: {
         exVAT: finalProductsExVAT,
@@ -268,16 +328,19 @@ const Shop = () => {
         originalIncVAT: productsIncVAT,
         discount: discountAmountSEK
       },
+      vat6: { exVAT: vat6ExVAT, vat: vat6VAT, incVAT: vat6IncVAT },
+      vat25: { exVAT: vat25ExVAT, vat: vat25VAT, incVAT: vat25IncVAT },
       shipping: {
         exVAT: shippingExVAT,
         vat: shippingVAT,
         incVAT: shippingIncVAT,
-        vatRate: selectedShipping.vatRate
+        vatRate: shippingVatRate
       },
       total: {
         exVAT: totalExVAT,
         vat: totalVAT,
-        incVAT: totalIncVAT
+        incVAT: roundedTotalIncVAT,
+        oresutjamning: oresutjamning
       }
     };
   };
@@ -297,13 +360,14 @@ const Shop = () => {
           id: item.id,
           title: item.title,
           price: item.price,
-          quantity: item.quantity
+          quantity: item.quantity,
+          category: item.category || 'book'
         })),
         shipping: {
           option_id: selectedShipping.id,
           name: selectedShipping.name,
           price_ex_vat: breakdown.shipping.exVAT,
-          vat_rate: selectedShipping.vatRate,
+          vat_rate: breakdown.shipping.vatRate,
           region: selectedShipping.region
         },
         total_amount: breakdown.total.incVAT,
@@ -551,8 +615,10 @@ const Shop = () => {
                                 <span className="font-medium">{option.price} kr</span>
                               </div>
                               <p className="text-xs text-muted-foreground">
-                                {Math.round(option.price / (1 + option.vatRate))} kr ex moms + {option.price - Math.round(option.price / (1 + option.vatRate))} kr moms ({Math.round(option.vatRate * 100)}%)
-                                {option.vatRate === 0 && " - Momsfri export"}
+                                {option.region === 'non-eu'
+                                  ? `${option.price} kr - Momsfri export`
+                                  : `Momssats beror på varukorgens innehåll`
+                                }
                               </p>
                             </div>
                           </label>
@@ -610,7 +676,7 @@ const Shop = () => {
                     {/* VAT Breakdown */}
                     <div className="space-y-2 mb-6 pt-4 border-t">
                       <div className="text-sm font-medium mb-2">Prisuppdelning</div>
-                      
+
                       <div className="flex justify-between text-sm">
                         <span>Varor (ex moms):</span>
                         <span>{vatBreakdown.products.exVAT} kr</span>
@@ -629,7 +695,7 @@ const Shop = () => {
                         <span>Varor totalt:</span>
                         <span>{vatBreakdown.products.incVAT} kr</span>
                       </div>
-                      
+
                       <div className="flex justify-between text-sm">
                         <span>Frakt (ex moms):</span>
                         <span>{vatBreakdown.shipping.exVAT} kr</span>
@@ -642,15 +708,27 @@ const Shop = () => {
                         <span>Frakt totalt:</span>
                         <span>{vatBreakdown.shipping.incVAT} kr</span>
                       </div>
-                      
+
+                      {vatBreakdown.total.oresutjamning !== 0 && (
+                        <div className="flex justify-between text-sm">
+                          <span>Öresutjämning:</span>
+                          <span>{vatBreakdown.total.oresutjamning > 0 ? '+' : ''}{vatBreakdown.total.oresutjamning.toFixed(2)} kr</span>
+                        </div>
+                      )}
+
                       <div className="flex justify-between font-medium text-lg pt-2 border-t">
                         <span>Att betala:</span>
                         <span>{vatBreakdown.total.incVAT} kr</span>
                       </div>
-                      
+
                       <div className="text-xs text-muted-foreground pt-2">
                         <div>Total moms: {vatBreakdown.total.vat} kr</div>
-                        <div>Varav moms varor: {vatBreakdown.products.vat} kr</div>
+                        {vatBreakdown.vat6.vat > 0 && (
+                          <div>Varav moms 6% (böcker): {vatBreakdown.vat6.vat} kr</div>
+                        )}
+                        {vatBreakdown.vat25.vat > 0 && (
+                          <div>Varav moms 25% (övrigt): {vatBreakdown.vat25.vat} kr</div>
+                        )}
                         <div>Varav moms frakt ({Math.round(vatBreakdown.shipping.vatRate * 100)}%): {vatBreakdown.shipping.vat} kr</div>
                       </div>
                     </div>

@@ -145,12 +145,29 @@ const handler = async (req: Request): Promise<Response> => {
 
           <h3 style="color: #2c3e50; margin-top: 25px;">Momsspecifikation</h3>
           <div style="background-color: #f8f9fa; padding: 15px; margin-bottom: 25px;">
+            ${(vatBreakdown.vat6?.incVAT || 0) > 0 ? `
             <div style="margin-bottom: 8px;">
-              <strong>Böcker:</strong> ${formatCurrency(vatBreakdown.products?.exVAT || 0)} + ${formatCurrency(vatBreakdown.products?.vat || 0)} moms (6%) = ${formatCurrency(vatBreakdown.products?.incVAT || 0)}
+              <strong>Böcker (6% moms):</strong> ${formatCurrency(vatBreakdown.vat6?.exVAT || 0)} + ${formatCurrency(vatBreakdown.vat6?.vat || 0)} moms = ${formatCurrency(vatBreakdown.vat6?.incVAT || 0)}
             </div>
+            ` : ''}
+            ${(vatBreakdown.vat25?.incVAT || 0) > 0 ? `
+            <div style="margin-bottom: 8px;">
+              <strong>Övrigt (25% moms):</strong> ${formatCurrency(vatBreakdown.vat25?.exVAT || 0)} + ${formatCurrency(vatBreakdown.vat25?.vat || 0)} moms = ${formatCurrency(vatBreakdown.vat25?.incVAT || 0)}
+            </div>
+            ` : ''}
+            ${!vatBreakdown.vat6 && !vatBreakdown.vat25 ? `
+            <div style="margin-bottom: 8px;">
+              <strong>Produkter:</strong> ${formatCurrency(vatBreakdown.products?.exVAT || 0)} + ${formatCurrency(vatBreakdown.products?.vat || 0)} moms = ${formatCurrency(vatBreakdown.products?.incVAT || 0)}
+            </div>
+            ` : ''}
             <div style="margin-bottom: 8px;">
               <strong>Frakt:</strong> ${formatCurrency(vatBreakdown.shipping?.exVAT || 0)} + ${formatCurrency(vatBreakdown.shipping?.vat || 0)} moms (${Math.round((vatBreakdown.shipping?.vatRate || 0) * 100)}%) = ${formatCurrency(vatBreakdown.shipping?.incVAT || 0)}
             </div>
+            ${(vatBreakdown.total?.oresutjamning || 0) !== 0 ? `
+            <div style="margin-bottom: 8px;">
+              <strong>Öresutjämning:</strong> ${formatCurrency(vatBreakdown.total?.oresutjamning || 0)}
+            </div>
+            ` : ''}
             <hr style="margin: 10px 0; border: none; border-top: 1px solid #dee2e6;">
             <div style="font-weight: bold;">
               <strong>Totalt exkl. moms:</strong> ${formatCurrency(vatBreakdown.total?.exVAT || 0)}<br>

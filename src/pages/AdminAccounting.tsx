@@ -37,12 +37,12 @@ interface AccountingRow {
 
 const BOOK_VAT_RATE = 0.06;
 const MERCH_VAT_RATE = 0.25;
-const STRIPE_PERCENTAGE = 0.014; // 1.4%
-const STRIPE_FIXED_FEE = 1.80; // SEK
 
 export default function AdminAccounting() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const [stripeFees, setStripeFees] = useState<Record<string, number>>({});
+  const [feesLoading, setFeesLoading] = useState(false);
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const { toast } = useToast();
@@ -50,6 +50,32 @@ export default function AdminAccounting() {
   useEffect(() => {
     fetchOrders();
   }, []);
+
+  const fetchStripeFees = async (orders: Order[]) => {
+    const paidOrders = orders.filter(o => o.stripe_payment_intent_id);
+    const paymentIntentIds = paidOrders.map(o => o.stripe_payment_intent_id!);
+
+    if (paymentIntentIds.length === 0) return;
+
+    setFeesLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('get-stripe-fees', {
+        body: { payment_intent_ids: paymentIntentIds }
+      });
+      if (!error && data?.fees) {
+        setStripeFees(data.fees);
+      }
+    } catch (e) {
+      console.error('Failed to fetch Stripe fees:', e);
+      toast({
+        title: "Kunde inte hämta Stripe-avgifter",
+        description: "Avgifterna kunde inte hämtas från Stripe. Kontrollera anslutningen.",
+        variant: "destructive",
+      });
+    } finally {
+      setFeesLoading(false);
+    }
+  };
 
   const fetchOrders = async () => {
     try {
@@ -61,6 +87,10 @@ export default function AdminAccounting() {
 
       if (error) throw error;
       setOrders(data || []);
+      // Hämta faktiska Stripe-avgifter efter att ordrar laddats
+      if (data && data.length > 0) {
+        fetchStripeFees(data);
+      }
     } catch (error) {
       toast({
         title: "Fel vid hämtning av beställningar",
@@ -72,7 +102,9 @@ export default function AdminAccounting() {
     }
   };
 
-  const getVatRate = (category: string | null) => {
+  const getVatRate = (category: string | null | undefined) => {
+    // Gamla ordrar saknar category - default till 'book' (alla tidiga produkter var böcker)
+    if (!category) return BOOK_VAT_RATE;
     return category === 'book' ? BOOK_VAT_RATE : MERCH_VAT_RATE;
   };
 
@@ -99,22 +131,29 @@ export default function AdminAccounting() {
       });
     }
 
-    // Add shipping if exists
+    // Add shipping if exists - använd faktisk momssats från ordern
     if (order.shipping_address) {
-      const shippingVatRate = 0.25;
-      const shippingIncVat = order.shipping_address.price_ex_vat * 100 * (1 + shippingVatRate);
+      const shippingVatRate = order.shipping_address?.vat_rate ?? 0.25;
       const shippingExVat = order.shipping_address.price_ex_vat * 100;
+      const shippingIncVat = shippingExVat * (1 + shippingVatRate);
       const shippingVat = shippingIncVat - shippingExVat;
-      
+
       totalExVat += shippingExVat;
-      vat25Total += shippingVat;
+      // Fördela fraktmoms till rätt momssats-kategori
+      if (shippingVatRate === BOOK_VAT_RATE) {
+        vat6Total += shippingVat;
+      } else {
+        vat25Total += shippingVat;
+      }
     }
 
     const totalVat = vat6Total + vat25Total;
     const totalIncVat = order.total_amount;
-    
-    // Calculate Stripe fee
-    const stripeFee = (totalIncVat / 100 * STRIPE_PERCENTAGE) + STRIPE_FIXED_FEE;
+
+    // Hämta faktisk Stripe-avgift från API (i öre) eller visa 0 om inte tillgänglig
+    const stripeFee = order.stripe_payment_intent_id && stripeFees[order.stripe_payment_intent_id]
+      ? stripeFees[order.stripe_payment_intent_id] / 100  // Konvertera öre till SEK
+      : 0;
     const netPayout = (totalIncVat / 100) - stripeFee;
 
     // Get product names
@@ -248,6 +287,7 @@ export default function AdminAccounting() {
           <h1 className="text-3xl font-bold">Bokföringsunderlag</h1>
           <p className="text-muted-foreground">
             Översikt av betalda beställningar med moms och Stripe-avgifter
+            {feesLoading && ' (hämtar Stripe-avgifter...)'}
           </p>
         </div>
 
