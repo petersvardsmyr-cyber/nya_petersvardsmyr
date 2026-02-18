@@ -21,8 +21,7 @@ max_client_conn = 100
 
 [realtime]
 enabled = true
-ip_version = "ipv6"
-port = 54323
+ip_version = "IPv6"
 max_header_length = 4096
 
 [studio]
@@ -39,16 +38,13 @@ pop3_port = 54327
 
 [storage]
 enabled = true
-port = 54328
 image_transformation = { enabled = true }
 
 [auth]
 enabled = true
-port = 54329
 site_url = "http://127.0.0.1:3000"
 additional_redirect_urls = ["https://127.0.0.1:3000"]
 jwt_expiry = 3600
-refresh_token_rotation_enabled = true
 refresh_token_reuse_interval = 10
 enable_signup = true
 enable_anonymous_sign_ins = false
@@ -58,19 +54,14 @@ enable_signup = true
 double_confirm_changes = true
 enable_confirmations = false
 max_frequency = "1m"
-secure_email_change_enabled = true
-otp_expiry = 300
 
 [auth.sms]
 enable_signup = false
 enable_confirmations = false
 max_frequency = "5m"
-otp_expiry = 300
 
-[auth.password]
-min_length = 8
-score_threshold = 3
-hibp_enabled = true
+[auth.mfa]
+max_enrolled_factors = 10
 
 [functions.newsletter]
 verify_jwt = true
@@ -106,4 +97,7 @@ verify_jwt = true
 verify_jwt = false
 
 [functions.send-blog-notification]
+verify_jwt = true
+
+[functions.get-stripe-fees]
 verify_jwt = true
