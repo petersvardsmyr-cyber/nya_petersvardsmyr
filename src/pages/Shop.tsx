@@ -359,7 +359,7 @@ const Shop = () => {
         items: cart.map(item => ({
           id: item.id,
           title: item.title,
-          price: item.price,
+          price: Math.round(item.price * (1 + getVatRate(item))), // inkl. moms, helkrona
           quantity: item.quantity,
           category: item.category || 'book'
         })),

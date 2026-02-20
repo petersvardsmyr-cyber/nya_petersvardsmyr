@@ -70,17 +70,17 @@ serve(async (req) => {
       apiVersion: "2023-10-16",
     });
 
-    // Create line items for Stripe (including VAT)
+    // Create line items for Stripe (item.price is already inkl. moms, in whole kronor)
     const lineItems = orderData.items.map(item => {
       const vatRate = item.category === 'book' ? 0.06 : 0.25;
-      const priceIncVAT = Math.round(item.price * (1 + vatRate) * 100); // Dynamisk momssats per produkt
+      const priceIncVATOre = item.price * 100; // Convert kr → öre, no VAT recalculation
       return {
         price_data: {
           currency: "sek",
           product_data: {
             name: `${item.title} (inkl. ${Math.round(vatRate * 100)}% moms)`,
           },
-          unit_amount: priceIncVAT,
+          unit_amount: priceIncVATOre,
         },
         quantity: item.quantity,
       };
