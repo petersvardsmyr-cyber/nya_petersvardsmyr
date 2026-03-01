@@ -116,7 +116,7 @@ export default function AdminDashboard() {
       const publishedPosts = allPostsData?.filter(post => post.is_published).length || 0;
       const totalProducts = productsData?.length || 0;
       const totalSubscribers = allSubscribersData?.length || 0;
-      const totalOrders = ordersData?.length || 0;
+      const totalOrders = ordersData?.filter(o => o.status !== 'pending').length || 0;
 
       setStats({
         totalPosts,
@@ -126,7 +126,7 @@ export default function AdminDashboard() {
         totalOrders,
         monthlyRevenue,
         previousMonthRevenue,
-        recentOrders: ordersData?.slice(0, 5) || [],
+        recentOrders: ordersData?.filter(o => o.status !== 'pending').slice(0, 5) || [],
         recentSubscribers: recentSubscribersData || [],
         recentPosts: recentPostsData || []
       });
