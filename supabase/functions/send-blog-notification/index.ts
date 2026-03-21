@@ -66,7 +66,7 @@ const handler = async (req: Request): Promise<Response> => {
     const { post_id, title, excerpt, slug }: BlogNotificationRequest = await req.json();
     console.log("Sending blog notification for:", title);
 
-    // Get blog subscribers only (subscription_type = 'blog')
+    // Get blog subscribers (subscription_type = 'blog')
     const adminClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
@@ -104,12 +104,12 @@ const handler = async (req: Request): Promise<Response> => {
     const batchSize = 5;
     for (let i = 0; i < subscribers.length; i += batchSize) {
       const batch = subscribers.slice(i, i + batchSize);
-      
+
       await Promise.all(
         batch.map(async (subscriber) => {
           try {
             const unsubscribeUrl = `${unsubscribeBaseUrl}?email=${encodeURIComponent(subscriber.email)}`;
-            
+
             const html = `
 <!DOCTYPE html>
 <html>
@@ -117,33 +117,78 @@ const handler = async (req: Request): Promise<Response> => {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 </head>
-<body style="font-family: Georgia, serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-  <h1 style="font-size: 24px; margin-bottom: 16px;">${title}</h1>
-  
-  ${excerpt ? `<p style="color: #666; margin-bottom: 24px;">${excerpt}</p>` : ''}
-  
-  <p>
-    <a href="${postUrl}" style="display: inline-block; background-color: #1a1a1a; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 4px;">
-      Läs inlägget
-    </a>
-  </p>
-  
-  <hr style="border: none; border-top: 1px solid #eee; margin: 32px 0;">
-  
-  <p style="font-size: 12px; color: #999;">
-    Du får detta mejl för att du prenumererar på bloggen.<br>
-    <a href="${unsubscribeUrl}" style="color: #999;">Avsluta prenumeration</a>
-  </p>
+<body style="margin: 0; padding: 0; background-color: #f5f0eb; font-family: Georgia, 'Times New Roman', serif;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #f5f0eb;">
+    <tr>
+      <td align="center" style="padding: 40px 20px;">
+        <table role="presentation" width="560" cellspacing="0" cellpadding="0" style="max-width: 560px; width: 100%;">
+
+          <!-- Header -->
+          <tr>
+            <td style="padding-bottom: 32px; text-align: center;">
+              <a href="${siteUrl}" style="text-decoration: none; color: #1a1a1a;">
+                <span style="font-family: Georgia, serif; font-size: 18px; letter-spacing: 0.5px; color: #1a1a1a;">Peter Svärdsmyr</span>
+              </a>
+              <div style="width: 40px; height: 1px; background-color: #c4b5a3; margin: 12px auto 0;"></div>
+            </td>
+          </tr>
+
+          <!-- Content card -->
+          <tr>
+            <td style="background-color: #ffffff; border-radius: 4px; padding: 40px 36px; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
+
+              <!-- Label -->
+              <p style="margin: 0 0 16px 0; font-family: -apple-system, BlinkMacSystemFont, sans-serif; font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: #a09080;">
+                Nytt blogginlägg
+              </p>
+
+              <!-- Title -->
+              <h1 style="margin: 0 0 20px 0; font-family: Georgia, serif; font-size: 26px; font-weight: normal; line-height: 1.3; color: #1a1a1a;">
+                ${title}
+              </h1>
+
+              <!-- Excerpt -->
+              ${excerpt ? `
+              <p style="margin: 0 0 28px 0; font-family: Georgia, serif; font-size: 16px; line-height: 1.7; color: #555;">
+                ${excerpt}
+              </p>
+              ` : ''}
+
+              <!-- CTA Button -->
+              <a href="${postUrl}" style="display: inline-block; background-color: #1a1a1a; color: #ffffff; font-family: -apple-system, BlinkMacSystemFont, sans-serif; font-size: 14px; font-weight: 500; padding: 13px 28px; text-decoration: none; border-radius: 3px; letter-spacing: 0.3px;">
+                Läs inlägget →
+              </a>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="padding: 28px 0; text-align: center;">
+              <p style="margin: 0; font-family: -apple-system, BlinkMacSystemFont, sans-serif; font-size: 12px; color: #a09080; line-height: 1.6;">
+                Du får detta mejl för att du prenumererar på bloggen.
+              </p>
+              <p style="margin: 6px 0 0 0; font-family: -apple-system, BlinkMacSystemFont, sans-serif; font-size: 12px;">
+                <a href="${unsubscribeUrl}" style="color: #a09080; text-decoration: underline;">Avsluta prenumeration</a>
+                &nbsp;&middot;&nbsp;
+                <a href="${siteUrl}" style="color: #a09080; text-decoration: underline;">petersvardsmyr.se</a>
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
 </body>
 </html>`;
 
             await resend.emails.send({
-              from: "Peter Svärdsmyr <info@petersvardsmyr.se>",
+              from: "Peter Svärdsmyr <hej@petersvardsmyr.se>",
               to: [subscriber.email],
-              subject: `Nytt blogginlägg: ${title}`,
+              subject: `${title}`,
               html,
             });
-            
+
             successCount++;
             console.log(`Email sent to: ${subscriber.email}`);
           } catch (err) {
@@ -152,7 +197,7 @@ const handler = async (req: Request): Promise<Response> => {
           }
         })
       );
-      
+
       // Small delay between batches
       if (i + batchSize < subscribers.length) {
         await new Promise(resolve => setTimeout(resolve, 100));
