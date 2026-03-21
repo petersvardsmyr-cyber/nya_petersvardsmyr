@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import { RichTextEditor } from '@/components/RichTextEditor';
-import { Save, ArrowLeft, X, FileText, Upload, Eye, EyeOff } from 'lucide-react';
+import { Save, ArrowLeft, X, FileText, Upload, Eye, EyeOff, Sparkles, Loader2 } from 'lucide-react';
 
 interface BlogPostData {
   title: string;
@@ -50,6 +50,7 @@ export default function AdminPostEditor() {
 
   const [newTag, setNewTag] = useState('');
   const [loading, setLoading] = useState(false);
+  const [aiLoading, setAiLoading] = useState<'excerpt' | 'meta_description' | 'both' | null>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -127,6 +128,61 @@ export default function AdminPostEditor() {
       ...prev,
       tags: prev.tags.filter(tag => tag !== tagToRemove),
     }));
+  };
+
+  const generateWithAI = async (type: 'excerpt' | 'meta_description' | 'both') => {
+    if (!formData.content || !formData.title) {
+      toast({
+        title: "Innehåll krävs",
+        description: "Skriv titel och innehåll innan du genererar med AI.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setAiLoading(type);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast({ title: "Inte inloggad", variant: "destructive" });
+        return;
+      }
+
+      const { data, error } = await supabase.functions.invoke('generate-blog-meta', {
+        body: {
+          content: formData.content,
+          title: formData.title,
+          type,
+        },
+      });
+
+      if (error) throw error;
+
+      if (data.excerpt !== undefined) {
+        setFormData(prev => ({ ...prev, excerpt: data.excerpt }));
+      }
+      if (data.meta_description !== undefined) {
+        setFormData(prev => ({ ...prev, meta_description: data.meta_description }));
+      }
+
+      toast({
+        title: "AI-text genererad",
+        description: type === 'both'
+          ? "Sammanfattning och meta-beskrivning har genererats."
+          : type === 'excerpt'
+            ? "Sammanfattning har genererats."
+            : "Meta-beskrivning har genererats.",
+      });
+    } catch (error: any) {
+      console.error('AI generation error:', error);
+      toast({
+        title: "Fel vid AI-generering",
+        description: error.message || "Kunde inte generera text.",
+        variant: "destructive",
+      });
+    } finally {
+      setAiLoading(null);
+    }
   };
 
   const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -404,7 +460,24 @@ export default function AdminPostEditor() {
                 </div>
 
                 <div>
-                  <Label htmlFor="excerpt">Sammanfattning</Label>
+                  <div className="flex items-center justify-between mb-1">
+                    <Label htmlFor="excerpt">Sammanfattning</Label>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => generateWithAI('excerpt')}
+                      disabled={aiLoading !== null || !formData.content || !formData.title}
+                      className="h-7 text-xs gap-1 text-muted-foreground hover:text-foreground"
+                    >
+                      {aiLoading === 'excerpt' ? (
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                      ) : (
+                        <Sparkles className="h-3 w-3" />
+                      )}
+                      Generera med AI
+                    </Button>
+                  </div>
                   <Textarea
                     id="excerpt"
                     value={formData.excerpt}
@@ -474,7 +547,24 @@ export default function AdminPostEditor() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
-                  <Label htmlFor="meta_description">Meta-beskrivning</Label>
+                  <div className="flex items-center justify-between mb-1">
+                    <Label htmlFor="meta_description">Meta-beskrivning</Label>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => generateWithAI('meta_description')}
+                      disabled={aiLoading !== null || !formData.content || !formData.title}
+                      className="h-7 text-xs gap-1 text-muted-foreground hover:text-foreground"
+                    >
+                      {aiLoading === 'meta_description' ? (
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                      ) : (
+                        <Sparkles className="h-3 w-3" />
+                      )}
+                      Generera med AI
+                    </Button>
+                  </div>
                   <Textarea
                     id="meta_description"
                     value={formData.meta_description}
