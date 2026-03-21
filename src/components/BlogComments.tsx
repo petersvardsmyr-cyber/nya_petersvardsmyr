@@ -1,29 +1,35 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
 import { sv } from 'date-fns/locale';
-import { MessageCircle, Send, ThumbsUp } from 'lucide-react';
+import { MessageCircle, Send, ThumbsUp, PenTool } from 'lucide-react';
 
 interface Comment {
   id: string;
   author_name: string | null;
+  author_email: string | null;
   content: string;
   created_at: string;
   likes: number;
   parent_id: string | null;
+  is_author: boolean;
 }
 
 interface BlogCommentsProps {
   postId: string;
+  postTitle: string;
+  postSlug: string;
 }
 
 const RATE_LIMIT_KEY = 'blog_comment_last_post';
 const RATE_LIMIT_MS = 60000; // 1 minute
 const LIKED_COMMENTS_KEY = 'blog_liked_comments';
+const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY || '';
 
 const getLikedComments = (): string[] => {
   try {
@@ -42,21 +48,72 @@ const saveLikedComment = (commentId: string) => {
   }
 };
 
-const BlogComments = ({ postId }: BlogCommentsProps) => {
+const AuthorBadge = () => (
+  <span className="inline-flex items-center gap-1 ml-1.5 px-1.5 py-0.5 rounded-full bg-accent/15 text-accent text-[10px] font-medium">
+    <PenTool className="h-2.5 w-2.5" />
+    Författaren
+  </span>
+);
+
+const BlogComments = ({ postId, postTitle, postSlug }: BlogCommentsProps) => {
+  const { user } = useAuth();
   const [comments, setComments] = useState<Comment[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [replyingTo, setReplyingTo] = useState<Comment | null>(null);
   const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const isAdmin = !!user;
   const [content, setContent] = useState('');
-  const [honeypot, setHoneypot] = useState(''); // Hidden field for bots
+  const [honeypot, setHoneypot] = useState('');
   const [likedComments, setLikedComments] = useState<string[]>([]);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const turnstileRef = useRef<HTMLDivElement>(null);
+  const turnstileWidgetId = useRef<string | null>(null);
 
   useEffect(() => {
     fetchComments();
     setLikedComments(getLikedComments());
   }, [postId]);
+
+  // Ladda Turnstile-script och rendera widget när formuläret visas
+  useEffect(() => {
+    if (!showForm || !TURNSTILE_SITE_KEY) return;
+
+    const renderWidget = () => {
+      if (turnstileRef.current && window.turnstile) {
+        // Rensa eventuell gammal widget
+        if (turnstileWidgetId.current) {
+          try { window.turnstile.remove(turnstileWidgetId.current); } catch {}
+        }
+        turnstileWidgetId.current = window.turnstile.render(turnstileRef.current, {
+          sitekey: TURNSTILE_SITE_KEY,
+          callback: (token: string) => setTurnstileToken(token),
+          'expired-callback': () => setTurnstileToken(null),
+          theme: 'light',
+          language: 'sv',
+        });
+      }
+    };
+
+    if (window.turnstile) {
+      renderWidget();
+    } else {
+      const script = document.createElement('script');
+      script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+      script.async = true;
+      script.onload = () => renderWidget();
+      document.head.appendChild(script);
+    }
+
+    return () => {
+      if (turnstileWidgetId.current && window.turnstile) {
+        try { window.turnstile.remove(turnstileWidgetId.current); } catch {}
+        turnstileWidgetId.current = null;
+      }
+    };
+  }, [showForm]);
 
   const fetchComments = async () => {
     const { data, error } = await supabase
@@ -73,17 +130,13 @@ const BlogComments = ({ postId }: BlogCommentsProps) => {
     setLoading(false);
   };
 
-  // Group comments: top-level and replies
   const topLevelComments = comments.filter(c => !c.parent_id);
   const getReplies = (parentId: string) => comments.filter(c => c.parent_id === parentId);
 
   const handleLike = async (commentId: string, currentLikes: number) => {
-    if (likedComments.includes(commentId)) {
-      return; // Already liked
-    }
+    if (likedComments.includes(commentId)) return;
 
-    // Optimistic update
-    setComments(prev => 
+    setComments(prev =>
       prev.map(c => c.id === commentId ? { ...c, likes: currentLikes + 1 } : c)
     );
     setLikedComments(prev => [...prev, commentId]);
@@ -96,37 +149,80 @@ const BlogComments = ({ postId }: BlogCommentsProps) => {
 
     if (error) {
       console.error('Error liking comment:', error);
-      // Revert on error
-      setComments(prev => 
+      setComments(prev =>
         prev.map(c => c.id === commentId ? { ...c, likes: currentLikes } : c)
       );
       setLikedComments(prev => prev.filter(id => id !== commentId));
     }
   };
 
+  const sendNotifications = useCallback(async (authorName: string) => {
+    // Admin-notis vid ny kommentar (skippa om admin själv kommenterar)
+    if (!isAdmin) {
+      try {
+        await supabase.functions.invoke('notify-admin', {
+          body: {
+            type: 'new_comment',
+            author_name: authorName,
+            comment: content.trim(),
+            post_title: postTitle,
+            post_slug: postSlug,
+          }
+        });
+      } catch (err) {
+        console.error('Failed to notify admin:', err);
+      }
+    }
+
+    // Notifiera alla kommentarsskribenter på inlägget
+    try {
+      await supabase.functions.invoke('notify-comment-reply', {
+        body: {
+          post_id: postId,
+          reply_author_name: authorName || 'Anonym',
+          reply_author_email: email.trim() || null,
+          reply_content: content.trim(),
+          post_slug: postSlug,
+          post_title: postTitle,
+        }
+      });
+    } catch (err) {
+      console.error('Failed to send comment notifications:', err);
+    }
+  }, [name, email, content, postId, postTitle, postSlug, isAdmin]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Honeypot check - if filled, silently reject (bot detected)
+
+    // Honeypot check
     if (honeypot) {
-      toast.success('Kommentar publicerad!'); // Fake success to fool bots
+      toast.success('Kommentar publicerad!');
       setContent('');
       setName('');
+      setEmail('');
       setShowForm(false);
       return;
     }
 
-    // Rate limiting check
-    const lastPost = localStorage.getItem(RATE_LIMIT_KEY);
-    if (lastPost) {
-      const timeSince = Date.now() - parseInt(lastPost, 10);
-      if (timeSince < RATE_LIMIT_MS) {
-        const secondsLeft = Math.ceil((RATE_LIMIT_MS - timeSince) / 1000);
-        toast.error(`Vänta ${secondsLeft} sekunder innan du kan kommentera igen`);
-        return;
+    // Turnstile-verifiering (skippa för admin)
+    if (!isAdmin && TURNSTILE_SITE_KEY && !turnstileToken) {
+      toast.error('Vänta på verifieringen');
+      return;
+    }
+
+    // Rate limiting (skippa för admin)
+    if (!isAdmin) {
+      const lastPost = localStorage.getItem(RATE_LIMIT_KEY);
+      if (lastPost) {
+        const timeSince = Date.now() - parseInt(lastPost, 10);
+        if (timeSince < RATE_LIMIT_MS) {
+          const secondsLeft = Math.ceil((RATE_LIMIT_MS - timeSince) / 1000);
+          toast.error(`Vänta ${secondsLeft} sekunder innan du kan kommentera igen`);
+          return;
+        }
       }
     }
-    
+
     if (!content.trim()) {
       toast.error('Skriv en kommentar');
       return;
@@ -139,13 +235,19 @@ const BlogComments = ({ postId }: BlogCommentsProps) => {
 
     setSubmitting(true);
 
+    const isReply = !!replyingTo;
+
+    const authorName = isAdmin ? (name.trim() || 'Peter Svärdsmyr') : (name.trim() || null);
+
     const { error } = await supabase
       .from('blog_comments')
       .insert({
         post_id: postId,
-        author_name: name.trim() || null,
+        author_name: authorName,
+        author_email: email.trim() || null,
         content: content.trim(),
-        parent_id: replyingTo?.id || null
+        parent_id: replyingTo?.id || null,
+        is_author: isAdmin,
       });
 
     if (error) {
@@ -153,12 +255,18 @@ const BlogComments = ({ postId }: BlogCommentsProps) => {
       toast.error('Kunde inte posta kommentaren');
     } else {
       localStorage.setItem(RATE_LIMIT_KEY, Date.now().toString());
-      toast.success(replyingTo ? 'Svar publicerat!' : 'Kommentar publicerad!');
+      toast.success(isReply ? 'Svar publicerat!' : 'Kommentar publicerad!');
+
+      // Skicka notifieringar i bakgrunden
+      sendNotifications(authorName || 'Anonym');
+
       setName('');
+      setEmail('');
       setContent('');
       setHoneypot('');
       setShowForm(false);
       setReplyingTo(null);
+      setTurnstileToken(null);
       fetchComments();
     }
 
@@ -175,6 +283,8 @@ const BlogComments = ({ postId }: BlogCommentsProps) => {
     setReplyingTo(null);
     setContent('');
     setName('');
+    setEmail('');
+    setTurnstileToken(null);
   };
 
   return (
@@ -185,8 +295,8 @@ const BlogComments = ({ postId }: BlogCommentsProps) => {
           Kommentarer ({comments.length})
         </h3>
         {!showForm && (
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             size="sm"
             onClick={() => setShowForm(true)}
           >
@@ -223,6 +333,16 @@ const BlogComments = ({ postId }: BlogCommentsProps) => {
             />
           </div>
           <div>
+            <Input
+              type="email"
+              placeholder="E-post (valfritt, för svarsnotis)"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              maxLength={255}
+              className="bg-background"
+            />
+          </div>
+          <div>
             <Textarea
               placeholder={replyingTo ? "Ditt svar..." : "Din kommentar..."}
               value={content}
@@ -235,14 +355,18 @@ const BlogComments = ({ postId }: BlogCommentsProps) => {
               {content.length}/1000
             </p>
           </div>
+          {/* Cloudflare Turnstile (dölj för admin) */}
+          {!isAdmin && TURNSTILE_SITE_KEY && (
+            <div ref={turnstileRef} />
+          )}
           <div className="flex gap-2">
-            <Button type="submit" disabled={submitting} size="sm">
+            <Button type="submit" disabled={submitting || (!isAdmin && !!TURNSTILE_SITE_KEY && !turnstileToken)} size="sm">
               <Send className="h-4 w-4 mr-2" />
               {submitting ? 'Publicerar...' : (replyingTo ? 'Svara' : 'Publicera')}
             </Button>
-            <Button 
-              type="button" 
-              variant="ghost" 
+            <Button
+              type="button"
+              variant="ghost"
               size="sm"
               onClick={cancelForm}
             >
@@ -265,13 +389,14 @@ const BlogComments = ({ postId }: BlogCommentsProps) => {
               <div key={comment.id}>
                 <div className="p-4 bg-muted/20 rounded-lg">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="font-medium text-sm">
+                    <span className="font-medium text-sm flex items-center">
                       {comment.author_name || 'Anonym'}
+                      {comment.is_author && <AuthorBadge />}
                     </span>
                     <span className="text-xs text-muted-foreground">
-                      {formatDistanceToNow(new Date(comment.created_at), { 
-                        addSuffix: true, 
-                        locale: sv 
+                      {formatDistanceToNow(new Date(comment.created_at), {
+                        addSuffix: true,
+                        locale: sv
                       })}
                     </span>
                   </div>
@@ -289,8 +414,8 @@ const BlogComments = ({ postId }: BlogCommentsProps) => {
                       onClick={() => handleLike(comment.id, comment.likes)}
                       disabled={hasLiked}
                       className={`flex items-center gap-1.5 text-xs transition-colors ${
-                        hasLiked 
-                          ? 'text-accent cursor-default' 
+                        hasLiked
+                          ? 'text-accent cursor-default'
                           : 'text-muted-foreground hover:text-accent'
                       }`}
                       title={hasLiked ? 'Du har redan gillat denna kommentar' : 'Gilla kommentar'}
@@ -312,9 +437,9 @@ const BlogComments = ({ postId }: BlogCommentsProps) => {
                               {reply.author_name || 'Anonym'}
                             </span>
                             <span className="text-xs text-muted-foreground">
-                              {formatDistanceToNow(new Date(reply.created_at), { 
-                                addSuffix: true, 
-                                locale: sv 
+                              {formatDistanceToNow(new Date(reply.created_at), {
+                                addSuffix: true,
+                                locale: sv
                               })}
                             </span>
                           </div>
@@ -326,8 +451,8 @@ const BlogComments = ({ postId }: BlogCommentsProps) => {
                               onClick={() => handleLike(reply.id, reply.likes)}
                               disabled={hasLikedReply}
                               className={`flex items-center gap-1.5 text-xs transition-colors ${
-                                hasLikedReply 
-                                  ? 'text-accent cursor-default' 
+                                hasLikedReply
+                                  ? 'text-accent cursor-default'
                                   : 'text-muted-foreground hover:text-accent'
                               }`}
                               title={hasLikedReply ? 'Du har redan gillat denna kommentar' : 'Gilla kommentar'}

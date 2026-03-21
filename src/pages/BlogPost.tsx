@@ -208,7 +208,7 @@ const BlogPost = () => {
         dangerouslySetInnerHTML={{ __html: sanitizedContent }}
       />
 
-      <BlogComments postId={post.id} />
+      <BlogComments postId={post.id} postTitle={post.title} postSlug={post.slug} />
 
       <BlogSubscribe />
 
