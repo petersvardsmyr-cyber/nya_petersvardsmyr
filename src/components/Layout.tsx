@@ -9,7 +9,7 @@ const Layout = () => {
       <main className="ml-0 md:ml-48 transition-all duration-300 flex-1">
         <Link to="/butik" className="sticky top-0 z-40 block px-4 pr-16 md:px-12 py-2.5 md:py-3 hover:bg-muted/50 transition-colors shadow-sm bg-background">
           <p className="text-sm md:text-base text-muted-foreground text-center max-w-4xl mx-auto">
-            En text för varje vecka på året.<br />Köp min bok <em className="text-foreground">Det ordnar sig</em>. 👉🏼 📚
+            📚 <strong className="text-foreground">Bokrea!</strong> Allt det vi delar <strong className="text-foreground">49 kr</strong> · Det ordnar sig <strong className="text-foreground">89 kr</strong>
           </p>
         </Link>
         <Outlet />
