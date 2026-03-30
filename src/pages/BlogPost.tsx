@@ -204,7 +204,7 @@ const BlogPost = () => {
       </header>
 
       <div 
-        className="prose max-w-none [&_p]:text-foreground [&_strong]:text-foreground [&_strong]:font-bold [&_em]:text-foreground [&_em]:italic [&_img]:my-4 [&_ul]:list-disc [&_ul]:ml-6 [&_ul]:my-2 [&_ol]:list-decimal [&_ol]:ml-6 [&_ol]:my-2 [&_blockquote]:border-l-4 [&_blockquote]:border-muted-foreground [&_blockquote]:pl-4 [&_blockquote]:italic [&_blockquote]:my-4 [&_blockquote]:text-foreground [&_h1]:text-foreground [&_h2]:text-foreground [&_h3]:text-foreground [&_h4]:text-foreground"
+        className="prose max-w-none [&_p]:text-foreground [&_strong]:text-foreground [&_strong]:font-bold [&_em]:text-foreground [&_em]:italic [&_img]:my-4 [&_ul]:list-disc [&_ul]:ml-6 [&_ul]:my-2 [&_ol]:list-decimal [&_ol]:ml-6 [&_ol]:my-2 [&_blockquote]:border-l-[3px] [&_blockquote]:border-foreground/25 [&_blockquote]:pl-6 [&_blockquote]:italic [&_blockquote]:my-10 [&_blockquote]:text-xl [&_blockquote]:md:text-2xl [&_blockquote]:leading-relaxed [&_blockquote]:font-heading [&_blockquote]:text-foreground/75 [&_h1]:text-foreground [&_h2]:text-foreground [&_h3]:text-foreground [&_h4]:text-foreground"
         dangerouslySetInnerHTML={{ __html: sanitizedContent }}
       />
 

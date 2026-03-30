@@ -133,19 +133,24 @@ All colors MUST be HSL.
   }
 
   .prose h1 {
-    @apply text-xl font-heading font-medium mt-10 mb-5;
+    @apply text-3xl font-heading font-medium mt-10 mb-5;
   }
 
   .prose h2 {
-    @apply text-lg font-heading font-medium mt-8 mb-4;
+    @apply text-2xl font-heading font-semibold mt-10 mb-4;
   }
 
   .prose h3 {
-    @apply text-[1.1rem] leading-7 font-heading font-medium mt-6 mb-3;
+    @apply text-xl font-heading font-medium mt-8 mb-3;
   }
 
-  .prose h4 {
-    @apply text-base font-heading font-semibold mt-5 mb-2;
+  /* h4 borttagen – använd h3 för underavsnitt */
+
+  /* Stor, luftig blockquote (citat) */
+  .prose blockquote {
+    @apply text-xl md:text-2xl leading-relaxed font-heading italic
+           border-l-[3px] border-foreground/25 pl-6 my-10
+           text-foreground/75;
   }
 
   /* Smooth animations */
