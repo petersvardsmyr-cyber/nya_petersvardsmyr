@@ -177,7 +177,6 @@ const BlogComments = ({ postId, postTitle, postSlug }: BlogCommentsProps) => {
         body: {
           post_id: postId,
           reply_author_name: authorName || 'Anonym',
-          reply_author_email: email.trim() || null,
           reply_content: content.trim(),
           post_slug: postSlug,
           post_title: postTitle,
