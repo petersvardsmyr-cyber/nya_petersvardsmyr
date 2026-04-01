@@ -12,7 +12,6 @@ import { MessageCircle, Send, ThumbsUp, PenTool } from 'lucide-react';
 interface Comment {
   id: string;
   author_name: string | null;
-  author_email: string | null;
   content: string;
   created_at: string;
   likes: number;
@@ -178,7 +177,6 @@ const BlogComments = ({ postId, postTitle, postSlug }: BlogCommentsProps) => {
         body: {
           post_id: postId,
           reply_author_name: authorName || 'Anonym',
-          reply_author_email: email.trim() || null,
           reply_content: content.trim(),
           post_slug: postSlug,
           post_title: postTitle,
@@ -242,7 +240,6 @@ const BlogComments = ({ postId, postTitle, postSlug }: BlogCommentsProps) => {
       .insert({
         post_id: postId,
         author_name: authorName,
-        author_email: email.trim() || null,
         content: content.trim(),
         parent_id: replyingTo?.id || null,
         is_author: isAdmin,
@@ -327,16 +324,6 @@ const BlogComments = ({ postId, postTitle, postSlug }: BlogCommentsProps) => {
               value={name}
               onChange={(e) => setName(e.target.value)}
               maxLength={100}
-              className="bg-background"
-            />
-          </div>
-          <div>
-            <Input
-              type="email"
-              placeholder="E-post (valfritt, för svarsnotis)"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              maxLength={255}
               className="bg-background"
             />
           </div>

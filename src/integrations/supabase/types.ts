@@ -16,7 +16,6 @@ export type Database = {
     Tables: {
       blog_comments: {
         Row: {
-          author_email: string | null
           author_name: string | null
           content: string
           created_at: string
@@ -27,7 +26,6 @@ export type Database = {
           post_id: string
         }
         Insert: {
-          author_email?: string | null
           author_name?: string | null
           content: string
           created_at?: string
@@ -38,7 +36,6 @@ export type Database = {
           post_id: string
         }
         Update: {
-          author_email?: string | null
           author_name?: string | null
           content?: string
           created_at?: string
