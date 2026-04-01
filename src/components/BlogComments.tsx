@@ -241,7 +241,6 @@ const BlogComments = ({ postId, postTitle, postSlug }: BlogCommentsProps) => {
       .insert({
         post_id: postId,
         author_name: authorName,
-        author_email: email.trim() || null,
         content: content.trim(),
         parent_id: replyingTo?.id || null,
         is_author: isAdmin,
