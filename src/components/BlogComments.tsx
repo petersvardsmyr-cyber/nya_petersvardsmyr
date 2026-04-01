@@ -143,9 +143,7 @@ const BlogComments = ({ postId, postTitle, postSlug }: BlogCommentsProps) => {
     saveLikedComment(commentId);
 
     const { error } = await supabase
-      .from('blog_comments')
-      .update({ likes: currentLikes + 1 })
-      .eq('id', commentId);
+      .rpc('increment_comment_likes', { comment_id: commentId });
 
     if (error) {
       console.error('Error liking comment:', error);
