@@ -471,6 +471,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      increment_comment_likes: {
+        Args: { comment_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role: "admin" | "user"
