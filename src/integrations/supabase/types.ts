@@ -458,45 +458,7 @@ export type Database = {
       }
     }
     Views: {
-      newsletter_subscribers_safe: {
-        Row: {
-          confirmed_at: string | null
-          created_at: string | null
-          email: string | null
-          id: string | null
-          is_active: boolean | null
-          name: string | null
-          subscribed_at: string | null
-          subscription_type: string | null
-          unsubscribed_at: string | null
-          updated_at: string | null
-        }
-        Insert: {
-          confirmed_at?: string | null
-          created_at?: string | null
-          email?: string | null
-          id?: string | null
-          is_active?: boolean | null
-          name?: string | null
-          subscribed_at?: string | null
-          subscription_type?: string | null
-          unsubscribed_at?: string | null
-          updated_at?: string | null
-        }
-        Update: {
-          confirmed_at?: string | null
-          created_at?: string | null
-          email?: string | null
-          id?: string | null
-          is_active?: boolean | null
-          name?: string | null
-          subscribed_at?: string | null
-          subscription_type?: string | null
-          unsubscribed_at?: string | null
-          updated_at?: string | null
-        }
-        Relationships: []
-      }
+      [_ in never]: never
     }
     Functions: {
       has_role: {

@@ -1,0 +1,1 @@
+DROP VIEW IF EXISTS public.newsletter_subscribers_safe;
