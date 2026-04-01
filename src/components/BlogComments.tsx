@@ -12,7 +12,6 @@ import { MessageCircle, Send, ThumbsUp, PenTool } from 'lucide-react';
 interface Comment {
   id: string;
   author_name: string | null;
-  author_email: string | null;
   content: string;
   created_at: string;
   likes: number;
