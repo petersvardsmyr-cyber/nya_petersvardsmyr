@@ -16,7 +16,6 @@ export type Database = {
     Tables: {
       blog_comments: {
         Row: {
-          author_email: string | null
           author_name: string | null
           content: string
           created_at: string
@@ -27,7 +26,6 @@ export type Database = {
           post_id: string
         }
         Insert: {
-          author_email?: string | null
           author_name?: string | null
           content: string
           created_at?: string
@@ -38,7 +36,6 @@ export type Database = {
           post_id: string
         }
         Update: {
-          author_email?: string | null
           author_name?: string | null
           content?: string
           created_at?: string
@@ -461,7 +458,45 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      newsletter_subscribers_safe: {
+        Row: {
+          confirmed_at: string | null
+          created_at: string | null
+          email: string | null
+          id: string | null
+          is_active: boolean | null
+          name: string | null
+          subscribed_at: string | null
+          subscription_type: string | null
+          unsubscribed_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          confirmed_at?: string | null
+          created_at?: string | null
+          email?: string | null
+          id?: string | null
+          is_active?: boolean | null
+          name?: string | null
+          subscribed_at?: string | null
+          subscription_type?: string | null
+          unsubscribed_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          confirmed_at?: string | null
+          created_at?: string | null
+          email?: string | null
+          id?: string | null
+          is_active?: boolean | null
+          name?: string | null
+          subscribed_at?: string | null
+          subscription_type?: string | null
+          unsubscribed_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       has_role: {
