@@ -77,11 +77,11 @@ serve(async (req) => {
         // Get shipping option from metadata
         const shippingOption = session.metadata?.shipping ? JSON.parse(session.metadata.shipping) : null;
 
-        // Combine delivery address with shipping option
-        const combinedShippingData = deliveryAddress && shippingOption ? {
+        // Store delivery address with shipping option nested separately to avoid field collisions
+        const combinedShippingData = deliveryAddress ? {
           ...deliveryAddress,
-          ...shippingOption
-        } : (deliveryAddress || shippingOption);
+          ...(shippingOption && { shipping_option: shippingOption })
+        } : (shippingOption ? { shipping_option: shippingOption } : null);
 
         // Update order status to completed
         const { error: updateError } = await supabaseClient

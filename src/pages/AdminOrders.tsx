@@ -362,7 +362,8 @@ export default function AdminOrders() {
                             <div>
                               <h4 className="font-medium mb-2">Leveransadress</h4>
                               <div className="text-sm space-y-1">
-                                {selectedOrder.shipping_address.name && (
+                                {/* Customer name - check both top-level and nested shipping_option */}
+                                {selectedOrder.shipping_address.name && !selectedOrder.shipping_address.option_id && (
                                   <p className="font-medium">{selectedOrder.shipping_address.name}</p>
                                 )}
                                 {selectedOrder.shipping_address.line1 && (
@@ -387,6 +388,21 @@ export default function AdminOrders() {
                                   <p className="mt-2">
                                     <span className="text-muted-foreground">Tel: </span>
                                     {selectedOrder.shipping_address.phone}
+                                  </p>
+                                )}
+                                {/* Show shipping option/region info */}
+                                {(selectedOrder.shipping_address.shipping_option?.name || selectedOrder.shipping_address.region) && (
+                                  <p className="mt-2 text-muted-foreground">
+                                    Fraktsätt: {selectedOrder.shipping_address.shipping_option?.name || selectedOrder.shipping_address.name}
+                                    {(selectedOrder.shipping_address.shipping_option?.region || selectedOrder.shipping_address.region) && (
+                                      <> ({selectedOrder.shipping_address.shipping_option?.region || selectedOrder.shipping_address.region})</>
+                                    )}
+                                  </p>
+                                )}
+                                {/* Fallback for old orders that only have shipping option data */}
+                                {!selectedOrder.shipping_address.line1 && !selectedOrder.shipping_address.shipping_option && selectedOrder.shipping_address.region && (
+                                  <p className="text-muted-foreground italic">
+                                    Fullständig adress saknas (äldre beställning)
                                   </p>
                                 )}
                               </div>
