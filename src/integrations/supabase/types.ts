@@ -21,7 +21,7 @@ export type Database = {
           content: string
           created_at: string
           id: string
-          is_author: boolean
+          is_author: boolean | null
           likes: number
           parent_id: string | null
           post_id: string
@@ -32,7 +32,7 @@ export type Database = {
           content: string
           created_at?: string
           id?: string
-          is_author?: boolean
+          is_author?: boolean | null
           likes?: number
           parent_id?: string | null
           post_id: string
@@ -43,7 +43,7 @@ export type Database = {
           content?: string
           created_at?: string
           id?: string
-          is_author?: boolean
+          is_author?: boolean | null
           likes?: number
           parent_id?: string | null
           post_id?: string
