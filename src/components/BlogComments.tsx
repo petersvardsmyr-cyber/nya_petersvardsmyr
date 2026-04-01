@@ -328,16 +328,6 @@ const BlogComments = ({ postId, postTitle, postSlug }: BlogCommentsProps) => {
             />
           </div>
           <div>
-            <Input
-              type="email"
-              placeholder="E-post (valfritt, för svarsnotis)"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              maxLength={255}
-              className="bg-background"
-            />
-          </div>
-          <div>
             <Textarea
               placeholder={replyingTo ? "Ditt svar..." : "Din kommentar..."}
               value={content}
