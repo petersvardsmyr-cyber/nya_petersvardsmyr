@@ -93,9 +93,9 @@ export default function AdminDashboard() {
       // Fetch all orders stats
       const { data: ordersData, error: ordersError } = await supabase
         .from('orders')
-        .select('id, email, total_amount, created_at, status')
+        .select('id, email, total_amount, created_at, status, stripe_payment_intent_id')
         .order('created_at', { ascending: false });
-      
+
       if (ordersError) throw ordersError;
 
       // Calculate monthly revenue
@@ -116,7 +116,7 @@ export default function AdminDashboard() {
       const publishedPosts = allPostsData?.filter(post => post.is_published).length || 0;
       const totalProducts = productsData?.length || 0;
       const totalSubscribers = allSubscribersData?.length || 0;
-      const totalOrders = ordersData?.filter(o => o.status !== 'pending').length || 0;
+      const totalOrders = ordersData?.filter(o => o.stripe_payment_intent_id).length || 0;
 
       setStats({
         totalPosts,
@@ -126,7 +126,7 @@ export default function AdminDashboard() {
         totalOrders,
         monthlyRevenue,
         previousMonthRevenue,
-        recentOrders: ordersData?.filter(o => o.status !== 'pending').slice(0, 5) || [],
+        recentOrders: ordersData?.filter(o => o.stripe_payment_intent_id).slice(0, 5) || [],
         recentSubscribers: recentSubscribersData || [],
         recentPosts: recentPostsData || []
       });
