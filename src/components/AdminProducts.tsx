@@ -10,6 +10,7 @@ import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { Plus, Edit, Trash2, Eye, EyeOff, Star, ArrowUp, ArrowDown } from 'lucide-react';
+import { BOOK_VAT_RATE } from '@/lib/constants';
 
 interface Product {
   id: string;
@@ -23,8 +24,6 @@ interface Product {
   sort_order: number;
   discount_active: boolean;
 }
-
-const BOOK_VAT_RATE = 0.06;
 
 export const AdminProducts = () => {
   const [products, setProducts] = useState<Product[]>([]);

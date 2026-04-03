@@ -52,7 +52,8 @@ export default function AdminBlogCommentsPage() {
     const { data: commentsData, error: commentsError } = await supabase
       .from('blog_comments')
       .select('*')
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(100);
 
     if (commentsError) {
       console.error('Error fetching comments:', commentsError);

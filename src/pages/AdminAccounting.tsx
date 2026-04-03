@@ -7,6 +7,9 @@ import { useToast } from '@/hooks/use-toast';
 import { Download, Loader2, FileSpreadsheet } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { format } from 'date-fns';
+import { sv } from 'date-fns/locale';
+import { BOOK_VAT_RATE, MERCH_VAT_RATE } from '@/lib/constants';
 
 interface Order {
   id: string;
@@ -34,9 +37,6 @@ interface AccountingRow {
   stripeFee: number;
   netPayout: number;
 }
-
-const BOOK_VAT_RATE = 0.06;
-const MERCH_VAT_RATE = 0.25;
 
 export default function AdminAccounting() {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -163,7 +163,7 @@ export default function AdminAccounting() {
 
     return {
       orderNumber: order.id.slice(0, 8),
-      date: new Date(order.created_at).toLocaleDateString('sv-SE'),
+      date: format(new Date(order.created_at), 'yyyy-MM-dd', { locale: sv }),
       customerEmail: order.email,
       products: productNames,
       amountExVat: totalExVat / 100,

@@ -6,7 +6,9 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Eye, Package, Calendar, CreditCard, Mail, Truck, Send, AlertCircle, CheckCircle2, Loader2, ShoppingCart, Trash2 } from 'lucide-react';
+import { Eye, Package, Calendar, CreditCard, Mail, Truck, Send, AlertCircle, CheckCircle2, Loader2, ShoppingCart, Trash2, Search } from 'lucide-react';
+import { format } from 'date-fns';
+import { sv } from 'date-fns/locale';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -37,15 +39,25 @@ export default function AdminOrders() {
   const [stripeStatus, setStripeStatus] = useState<'checking' | 'success' | 'error' | null>(null);
   const [stripeDetails, setStripeDetails] = useState<any>(null);
   const [activeTab, setActiveTab] = useState<'completed' | 'abandoned'>('completed');
+  const [searchQuery, setSearchQuery] = useState('');
   const { toast } = useToast();
 
-  // Filter orders based on tab
-  const paidOrders = orders.filter(order => 
-    order.stripe_payment_intent_id !== null && order.stripe_payment_intent_id !== undefined
+  // Filter orders based on tab and search
+  const matchesSearch = (order: Order) => {
+    if (!searchQuery.trim()) return true;
+    return order.email.toLowerCase().includes(searchQuery.toLowerCase());
+  };
+
+  const paidOrders = orders.filter(order =>
+    order.stripe_payment_intent_id !== null &&
+    order.stripe_payment_intent_id !== undefined &&
+    matchesSearch(order)
   );
-  
-  const abandonedOrders = orders.filter(order => 
-    order.status === 'pending' && !order.stripe_payment_intent_id
+
+  const abandonedOrders = orders.filter(order =>
+    order.status === 'pending' &&
+    !order.stripe_payment_intent_id &&
+    matchesSearch(order)
   );
 
   const shippedOrders = paidOrders.filter(order => order.status === 'shipped');
@@ -59,7 +71,7 @@ export default function AdminOrders() {
     try {
       const { data, error } = await supabase
         .from('orders')
-        .select('*')
+        .select('id, created_at, email, total_amount, discount_amount, discount_code, status, items, shipping_address, stripe_session_id, stripe_payment_intent_id, shipped_at, shipping_tracking_number')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -120,13 +132,7 @@ export default function AdminOrders() {
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('sv-SE', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    return format(new Date(dateString), 'd MMM yyyy HH:mm', { locale: sv });
   };
 
   const handleShipOrder = async () => {
@@ -563,6 +569,17 @@ export default function AdminOrders() {
             <div className="text-2xl font-bold">{orders.length}</div>
           </CardContent>
         </Card>
+      </div>
+
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input
+          type="text"
+          placeholder="Sök på e-postadress..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="pl-10"
+        />
       </div>
 
       {orders.length === 0 ? (
