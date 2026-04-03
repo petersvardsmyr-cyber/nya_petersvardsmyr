@@ -24,6 +24,7 @@ export function AdminNewsletter() {
   const [showDrafts, setShowDrafts] = useState(true);
   const [currentDraftId, setCurrentDraftId] = useState<string | null>(null);
   const [draftToDelete, setDraftToDelete] = useState<string | null>(null);
+  const [showSendConfirm, setShowSendConfirm] = useState(false);
   const [sendProgress, setSendProgress] = useState<{ sent: number; total: number; status: string } | null>(null);
   const [newsletterStatus, setNewsletterStatus] = useState<{ remaining: number; already_sent: number; total: number } | null>(null);
 
@@ -542,16 +543,16 @@ export function AdminNewsletter() {
                 <Save className="w-4 h-4 mr-2" />
                 {currentDraftId ? 'Uppdatera utkast' : 'Spara som utkast'}
               </Button>
-              <Button 
+              <Button
                 type="button"
-                onClick={sendNewsletter}
+                onClick={() => setShowSendConfirm(true)}
                 disabled={isLoading}
                 className="flex-1"
               >
                 <Mail className="w-4 h-4 mr-2" />
-                {isLoading 
-                  ? 'Skickar...' 
-                  : newsletterStatus && newsletterStatus.remaining > 0 
+                {isLoading
+                  ? 'Skickar...'
+                  : newsletterStatus && newsletterStatus.remaining > 0
                     ? `Skicka till nästa ${Math.min(40, newsletterStatus.remaining)} prenumeranter`
                     : `Skicka till max 40 av ${subscribers.filter(s => s.is_active && s.confirmed_at && s.subscription_type === 'newsletter').length} prenumeranter`}
               </Button>
@@ -559,6 +560,27 @@ export function AdminNewsletter() {
           </form>
         </CardContent>
       </Card>
+
+      {/* Send Confirmation Dialog */}
+      <AlertDialog open={showSendConfirm} onOpenChange={setShowSendConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Skicka nyhetsbrev?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {newsletterStatus && newsletterStatus.remaining > 0
+                ? `Nästa ${Math.min(40, newsletterStatus.remaining)} av ${newsletterStatus.remaining} återstående prenumeranter kommer att få mejlet med ämnet "${subject}".`
+                : `Upp till 40 av ${subscribers.filter(s => s.is_active && s.confirmed_at && s.subscription_type === 'newsletter').length} bekräftade prenumeranter kommer att få mejlet med ämnet "${subject}".`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Avbryt</AlertDialogCancel>
+            <AlertDialogAction onClick={() => { setShowSendConfirm(false); sendNewsletter(); }}>
+              <Mail className="w-4 h-4 mr-2" />
+              Skicka
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={!!draftToDelete} onOpenChange={(open) => !open && setDraftToDelete(null)}>

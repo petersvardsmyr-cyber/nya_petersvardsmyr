@@ -354,10 +354,14 @@ export default function AdminOrders() {
                                 <div key={index} className="flex justify-between items-center p-2 border rounded">
                                   <span>{item.title}</span>
                                   <div className="text-right">
-                                    <div>{item.quantity} st</div>
-                                    <div className="text-sm text-muted-foreground">
-                                      {formatCurrency(item.price * 100)}
+                                    <div className="font-medium">
+                                      {formatCurrency(item.price * item.quantity * 100)}
                                     </div>
+                                    {item.quantity > 1 && (
+                                      <div className="text-sm text-muted-foreground">
+                                        {item.quantity} st × {formatCurrency(item.price * 100)}
+                                      </div>
+                                    )}
                                   </div>
                                 </div>
                               ))}
